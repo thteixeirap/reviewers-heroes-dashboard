@@ -19,6 +19,7 @@ const parser = ({
   closed_at: closedAt, // Ex: "2025-03-31T16:37:31.932-03:00", null
   closed_by: closedBy, // Ex: "Ayrton Vargas Witcel Fidelis", null
   labels, // Ex: ["Technical Debt"]
+  web_url: webUrl, // Ex: "https://gitlab.host/namespace/project-name/-/issues/1"
   references: { relative } // Ex: namespace/project-name#1
 }) => ({
   id,
@@ -31,6 +32,7 @@ const parser = ({
   closedAt: parseISODate(closedAt),
   closedBy: closedBy ? parseUser(closedBy) : null,
   labels,
+  webUrl,
   projectReference: relative
 })
 
