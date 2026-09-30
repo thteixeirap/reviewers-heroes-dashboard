@@ -51,7 +51,7 @@
           <div class="details__table-container">
             <table class="details__table">
               <thead>
-                <tr><th class="details__table-header--status">Status</th><th class="details__table-header--project">Projeto</th><th>Título</th><th class="details__table-header--labels">Labels</th><th class="details__table-header--center details__table-header--link">GitLab</th></tr>
+                <tr><th class="details__table-header--status">Status</th><th class="details__table-header--project">Projeto</th><th>Título</th><th class="details__table-header--project">Autor</th><th class="details__table-header--project">Assignee</th><th class="details__table-header--labels">Labels</th><th class="details__table-header--center details__table-header--link">GitLab</th></tr>
               </thead>
               <tbody>
                 <% sinceLastCheck.issues.forEach((issue) => { %>
@@ -61,6 +61,8 @@
                   </td>
                   <td class="details__table-cell details__table-cell--project" title="<%= issue.projectName %>"><%= issue.projectName %></td>
                   <td class="details__table-cell details__table-cell--title" title="<%= issue.title %>"><%= issue.title %></td>
+                  <td class="details__table-cell details__table-cell--project" title="<%= issue.author || '' %>"><%= issue.author || '-' %></td>
+                  <td class="details__table-cell details__table-cell--project" title="<%= (issue.assignees || []).join(', ') %>"><%= (issue.assignees || []).join(', ') || 'Sem assignee' %></td>
                   <td class="details__table-cell details__table-cell--labels" title="<%= (issue.labels || []).join(', ') %>"><%= (issue.labels || []).join(', ') %></td>
                   <td class="details__table-cell details__table-cell--link">
                     <% if (issue.webUrl) { %>
@@ -72,7 +74,7 @@
                 </tr>
                 <% }) %>
                 <% if (!sinceLastCheck.issues.length) { %>
-                <tr><td class="details__table-cell" colspan="5">Nenhuma issue aberta ou fechada desde essa data.</td></tr>
+                <tr><td class="details__table-cell" colspan="7">Nenhuma issue aberta ou fechada desde essa data.</td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -203,6 +205,10 @@
               <span class="status-badge status-badge--${issue.state}">${stateLabel}</span>
               <span>•</span>
               <span>${escapeHtml(issue.projectName)}</span>
+            </div>
+            <div class="issue-drawer-item__people">
+              <div><strong>Autor:</strong> ${escapeHtml(issue.author || '-')}</div>
+              <div><strong>Assignee:</strong> ${(issue.assignees || []).length ? (issue.assignees || []).map(escapeHtml).join(', ') : 'Sem assignee'}</div>
             </div>
             ${(issue.labels || []).length ? `<div class="issue-drawer-item__labels">${(issue.labels || []).map(escapeHtml).join(', ')}</div>` : ''}
             ${issue.webUrl ? `<a href="${issue.webUrl}" class="btn btn--link issue-drawer-item__link" target="_blank" rel="noopener noreferrer">Ver no GitLab #${issue.id}</a>` : `<span>#${issue.id}</span>`}

@@ -61,6 +61,8 @@ const summarizeIssueForBoard = (issue) => ({
   labels: issue.labels,
   webUrl: issue.webUrl,
   projectName: getProjectNameFromReference(issue.projectReference),
+  author: issue.author ? (issue.author.name || issue.author.userName) : null,
+  assignees: (issue.assignees || []).map((user) => user.name || user.userName),
   createdAt: issue.createdAt,
   closedAt: issue.closedAt
 })

@@ -1040,6 +1040,12 @@ body {
   margin-bottom: 0.6rem;
 }
 
+.issue-drawer-item__people {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
 .issue-drawer-item__link {
   display: inline-flex;
 }
@@ -1327,6 +1333,7 @@ body.issues-board-light {
 }
 
 .issues-board-light .issue-drawer-item__meta,
+.issues-board-light .issue-drawer-item__people,
 .issues-board-light .issue-drawer-item__labels {
   color: #6b7280;
 }

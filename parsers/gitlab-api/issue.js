@@ -18,6 +18,8 @@ const parser = ({
   updated_at: updatedAt, // Ex: "2025-03-31T16:37:31.932-03:00", null
   closed_at: closedAt, // Ex: "2025-03-31T16:37:31.932-03:00", null
   closed_by: closedBy, // Ex: "Ayrton Vargas Witcel Fidelis", null
+  author, // Ex: { id: 1, name: "Fulano", username: "fulano" }
+  assignees = [], // Ex: [{ id: 1, name: "Fulano", username: "fulano" }]
   labels, // Ex: ["Technical Debt"]
   web_url: webUrl, // Ex: "https://gitlab.host/namespace/project-name/-/issues/1"
   references: { relative } // Ex: namespace/project-name#1
@@ -31,6 +33,8 @@ const parser = ({
   updatedAt: parseISODate(updatedAt),
   closedAt: parseISODate(closedAt),
   closedBy: closedBy ? parseUser(closedBy) : null,
+  author: author ? parseUser(author) : null,
+  assignees: assignees.map(parseUser),
   labels,
   webUrl,
   projectReference: relative
