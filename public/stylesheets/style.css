@@ -942,6 +942,36 @@ body {
   margin-bottom: 1rem;
 }
 
+.aging-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.aging-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.aging-stat__label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+.aging-stat__value {
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.aging-stat__hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+}
+
 .issue-drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -1234,6 +1264,15 @@ body.issues-board-light {
 
 .issues-board-light .issues-board__hint {
   color: #6b7280;
+}
+
+.issues-board-light .aging-stat__label,
+.issues-board-light .aging-stat__hint {
+  color: #6b7280;
+}
+
+.issues-board-light .aging-stat__value {
+  color: #111827;
 }
 
 .issues-board-light .label-picker {

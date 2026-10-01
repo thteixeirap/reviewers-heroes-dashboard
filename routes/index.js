@@ -13,9 +13,11 @@ const totalEstimated = (mrs) => mrs.reduce((total, mr) => (
 
 const sortDecreasingReviewers = (a, b) => b.totalReviews - a.totalReviews
 
-function formatDate(date) {
-  return date.toISOString().split('T')[0]
-}
+const MONTHS_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const pad = (value) => String(value).padStart(2, '0')
+
+const formatDate = (date) => `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
+const formatShortDate = (date) => `${pad(date.getDate())} ${MONTHS_PT[date.getMonth()]}`
 
 function getLastNthMonthsWeeks(numberOfMonths = 1) {
   const now = new Date()
@@ -41,7 +43,8 @@ function getLastNthMonthsWeeks(numberOfMonths = 1) {
     weeks.push({
       beginAt: weekStart,
       endAt: weekEnd,
-      week: `${formatDate(weekStart)} to ${formatDate(weekEnd)}`
+      week: `${formatDate(weekStart)} – ${formatDate(weekEnd)}`,
+      shortLabel: formatShortDate(weekStart)
     })
 
     // Go forward one week
@@ -66,6 +69,40 @@ const summarizeIssueForBoard = (issue) => ({
   createdAt: issue.createdAt,
   closedAt: issue.closedAt
 })
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000
+const OLD_ISSUE_DAYS = 120
+const STALE_ISSUE_DAYS = 60
+
+const daysBetween = (from, to) => Math.max(0, Math.floor((to - from) / DAY_IN_MS))
+
+function getIssuesAging(issues, now = new Date()) {
+  const points = issues
+    .filter((issue) => issue.state === 'opened' && issue.createdAt)
+    .map((issue) => {
+      const ageDays = daysBetween(issue.createdAt, now)
+      const inactiveDays = daysBetween(issue.updatedAt || issue.createdAt, now)
+
+      return {
+        ...summarizeIssueForBoard(issue),
+        ageDays,
+        inactiveDays,
+        isStale: ageDays >= OLD_ISSUE_DAYS && inactiveDays >= STALE_ISSUE_DAYS
+      }
+    })
+
+  const inactiveCount = points.filter((point) => point.inactiveDays >= STALE_ISSUE_DAYS).length
+
+  return {
+    totalBacklog: points.length,
+    inactiveCount,
+    inactivePercent: points.length ? Math.round((inactiveCount / points.length) * 100) : 0,
+    staleCount: points.filter((point) => point.isStale).length,
+    oldDays: OLD_ISSUE_DAYS,
+    staleDays: STALE_ISSUE_DAYS,
+    points
+  }
+}
 
 function getNumberOfNotClosedIssuesByWeek(issues, weeksInterval) {
   return weeksInterval.map((week) => {
@@ -277,7 +314,11 @@ router.get('/issues/:groupId', async (req, res) => {
     } : null
 
     res.render('issues-board', {
-      issuesCountByWeek, labels: labelsQueryParam, issuesSummary, sinceLastCheck
+      issuesCountByWeek,
+      labels: labelsQueryParam,
+      issuesSummary,
+      sinceLastCheck,
+      agingStats: getIssuesAging(issues)
     })
   }).catch((err) => {
     res.status(500)

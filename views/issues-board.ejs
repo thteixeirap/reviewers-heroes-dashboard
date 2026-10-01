@@ -13,6 +13,10 @@
         <div class="label-picker">
           <span class="label-picker__title"><%= activeLabels.length ? 'Label ativa' : 'Todas as labels' %></span>
           <div class="label-cloud">
+            <span
+              class="label-tag <%= activeLabels.length ? '' : 'label-tag--active' %>"
+              data-label=""
+            >Todas</span>
             <% issuesSummary.labels.forEach(label => { %>
             <span
               class="label-tag <%= activeLabels.includes(label.name) ? 'label-tag--active' : '' %>"
@@ -23,7 +27,7 @@
         </div>
 
         <section class="details__section">
-          <h2 class="details__section-title">📈 Issues ao longo do tempo</h2>
+          <h2 class="details__section-title">Issues ao longo do tempo</h2>
           <p class="issues-board__hint">Clique em um ponto do gráfico para abrir os detalhes daquela semana no painel lateral.</p>
           <div class="issues-board__chart-container">
             <canvas id="issuesChart"></canvas>
@@ -31,7 +35,31 @@
         </section>
 
         <section class="details__section">
-          <h2 class="details__section-title">🕓 Acompanhamento por período</h2>
+          <h2 class="details__section-title">Idade × inatividade (issues abertas)</h2>
+          <p class="issues-board__hint">Cada ponto é uma issue aberta. Clique para ver os detalhes dela no painel lateral.</p>
+          <div class="aging-stats">
+            <div class="aging-stat">
+              <span class="aging-stat__label">Backlog atual</span>
+              <span class="aging-stat__value"><%= agingStats.totalBacklog %></span>
+            </div>
+            <div class="aging-stat">
+              <span class="aging-stat__label">Sem atividade há mais de <%= agingStats.staleDays %> dias</span>
+              <span class="aging-stat__value"><%= agingStats.inactivePercent %>%</span>
+              <span class="aging-stat__hint"><%= agingStats.inactiveCount %> issue<%= agingStats.inactiveCount !== 1 ? 's' : '' %></span>
+            </div>
+            <div class="aging-stat">
+              <span class="aging-stat__label">Velhas e paradas</span>
+              <span class="aging-stat__value"><%= agingStats.staleCount %></span>
+              <span class="aging-stat__hint"><%= agingStats.oldDays %>d+ de idade, <%= agingStats.staleDays %>d+ sem atividade</span>
+            </div>
+          </div>
+          <div class="issues-board__chart-container">
+            <canvas id="agingChart"></canvas>
+          </div>
+        </section>
+
+        <section class="details__section">
+          <h2 class="details__section-title">Acompanhamento por período</h2>
           <p class="issues-board__hint">Selecione a data do último alinhamento para visualizar o que foi aberto ou fechado de lá até hoje.</p>
           <form class="checkpoint-form" method="GET" action="">
             <input type="hidden" name="labels" value="<%= labels %>">
@@ -47,7 +75,7 @@
 
         <% if (sinceLastCheck) { %>
         <section class="details__section">
-          <h2 class="details__section-title">🕓 Issues desde <%= sinceLastCheck.date %> (<%= sinceLastCheck.issues.length %>)</h2>
+          <h2 class="details__section-title">Issues desde <%= sinceLastCheck.date %> (<%= sinceLastCheck.issues.length %>)</h2>
           <div class="details__table-container">
             <table class="details__table">
               <thead>
@@ -83,7 +111,7 @@
         <% } %>
 
         <section class="details__section">
-          <h2 class="details__section-title">📊 Ranking de projetos</h2>
+          <h2 class="details__section-title">Ranking de projetos</h2>
           <p class="issues-board__hint">Clique em um projeto para ver as issues dele no GitLab.</p>
           <ul class="ranking-list">
             <% const labelParams = activeLabels.filter(Boolean).map((label) => `label_name[]=${encodeURIComponent(label)}`).join('&') %>
@@ -132,8 +160,16 @@
       document.querySelectorAll('.label-tag').forEach(
         (element) => {
           element.onclick = (evt) => {
+            const { label } = evt.currentTarget.dataset
+            const isActive = evt.currentTarget.classList.contains('label-tag--active')
             const params = new URLSearchParams(document.location.search)
-            params.set('labels', evt.currentTarget.dataset.label)
+
+            if (label && !isActive) {
+              params.set('labels', label)
+            } else {
+              params.delete('labels')
+            }
+
             document.location.search = params.toString()
           }
         }
@@ -141,12 +177,14 @@
     </script>
 
     <script>
-      const data = <%- JSON.stringify(issuesCountByWeek) %>
+      const data = <%- JSON.stringify(issuesCountByWeek).replace(/</g, '\\u003c') %>
+      const agingStats = <%- JSON.stringify(agingStats).replace(/</g, '\\u003c') %>
 
       const { notClosedIssuesByWeek, openedIssuesByWeek, closedIssuesByWeek } = data
 
       // Prepare the data for the chart
-      const chartLabels = notClosedIssuesByWeek.map((entry) => entry.week)
+      const chartLabels = notClosedIssuesByWeek.map((entry) => entry.shortLabel)
+      const fullWeekLabels = notClosedIssuesByWeek.map((entry) => entry.week)
 
       const notClosedIssuesByWeekCounts = notClosedIssuesByWeek.map((entry) => entry.count)
       const openedIssuesByWeekCounts = openedIssuesByWeek.map((entry) => entry.count)
@@ -188,15 +226,22 @@
       function renderIssueDetails(datasetIndex, weekIndex) {
         const week = datasetsByIndex[datasetIndex][weekIndex]
 
-        drawerTitle.textContent = `${datasetLabels[datasetIndex]} – ${week ? week.week : ''}`
+        showIssuesInDrawer(
+          `${datasetLabels[datasetIndex]} – ${week ? week.week : ''}`,
+          week ? week.issues : []
+        )
+      }
 
-        if (!week || !week.issues.length) {
+      function showIssuesInDrawer(title, issues) {
+        drawerTitle.textContent = title
+
+        if (!issues.length) {
           drawerBody.innerHTML = `<p class="issues-board__hint">Nenhuma issue encontrada nesse período.</p>`
           openDrawer()
           return
         }
 
-        const items = week.issues.map((issue) => {
+        const items = issues.map((issue) => {
           const stateLabel = issue.state === 'opened' ? 'Aberta' : 'Fechada'
           return `
           <div class="issue-drawer-item">
@@ -210,6 +255,7 @@
               <div><strong>Autor:</strong> ${escapeHtml(issue.author || '-')}</div>
               <div><strong>Assignee:</strong> ${(issue.assignees || []).length ? (issue.assignees || []).map(escapeHtml).join(', ') : 'Sem assignee'}</div>
             </div>
+            ${issue.ageDays != null ? `<div class="issue-drawer-item__people"><div><strong>Idade:</strong> ${issue.ageDays} dias</div><div><strong>Sem atividade há:</strong> ${issue.inactiveDays} dias</div></div>` : ''}
             ${(issue.labels || []).length ? `<div class="issue-drawer-item__labels">${(issue.labels || []).map(escapeHtml).join(', ')}</div>` : ''}
             ${issue.webUrl ? `<a href="${issue.webUrl}" class="btn btn--link issue-drawer-item__link" target="_blank" rel="noopener noreferrer">Ver no GitLab #${issue.id}</a>` : `<span>#${issue.id}</span>`}
           </div>
@@ -258,19 +304,89 @@
             renderIssueDetails(datasetIndex, index)
           },
           plugins: {
-            legend: { labels: { color: 'rgba(17, 24, 39, 0.9)' } }
+            legend: { labels: { color: 'rgba(17, 24, 39, 0.9)' } },
+            tooltip: {
+              callbacks: { title: (items) => `Semana ${fullWeekLabels[items[0].dataIndex]}` }
+            }
           },
           scales: {
             x: {
               type: 'category',
-              title: { display: true, text: 'Semana', color: 'rgba(17, 24, 39, 0.9)' },
-              ticks: { autoSkip: true, maxTicksLimit: 20, color: 'rgba(17, 24, 39, 0.7)' },
+              title: { display: true, text: 'Semana (início no domingo)', color: 'rgba(17, 24, 39, 0.9)' },
+              ticks: { autoSkip: true, maxTicksLimit: 20, maxRotation: 0, color: 'rgba(17, 24, 39, 0.7)' },
               grid: { color: 'rgba(17, 24, 39, 0.08)' },
               reverse: false,
             },
             y: {
               beginAtZero: true,
               title: { display: true, text: 'Quantidade de Issues', color: 'rgba(17, 24, 39, 0.9)' },
+              ticks: { color: 'rgba(17, 24, 39, 0.7)' },
+              grid: { color: 'rgba(17, 24, 39, 0.08)' },
+            },
+          },
+        },
+      })
+
+      const agingPoint = (issue) => ({ x: issue.ageDays, y: issue.inactiveDays, issue })
+
+      new Chart(document.getElementById('agingChart').getContext('2d'), {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'Em andamento',
+            data: agingStats.points.filter((issue) => !issue.isStale).map(agingPoint),
+            backgroundColor: 'rgba(37, 99, 235, 0.85)',
+            pointStyle: 'circle',
+            pointRadius: 5,
+            pointHoverRadius: 8,
+          }, {
+            label: `Velha e parada (${agingStats.oldDays}d+, ${agingStats.staleDays}d+ sem atividade)`,
+            data: agingStats.points.filter((issue) => issue.isStale).map(agingPoint),
+            backgroundColor: 'rgba(234, 88, 12, 0.9)',
+            pointStyle: 'triangle',
+            pointRadius: 6,
+            pointHoverRadius: 9,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (evt, elements, chart) => {
+            const tooltipElements = chart.tooltip.getActiveElements()
+            const clicked = tooltipElements.length ? tooltipElements : elements
+            if (!clicked.length) return
+
+            const issues = clicked.map(({ datasetIndex, index }) => (
+              chart.data.datasets[datasetIndex].data[index].issue
+            ))
+
+            showIssuesInDrawer(
+              issues.length === 1 ? `Issue #${issues[0].id}` : `${issues.length} issues neste ponto`,
+              issues
+            )
+          },
+          plugins: {
+            legend: { labels: { usePointStyle: true, color: 'rgba(17, 24, 39, 0.9)' } },
+            tooltip: {
+              callbacks: {
+                label: (item) => {
+                  const { issue } = item.raw
+                  return `#${issue.id} ${issue.title} (${issue.ageDays}d de idade, ${issue.inactiveDays}d sem atividade)`
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              beginAtZero: true,
+              title: { display: true, text: 'Idade da issue (dias)', color: 'rgba(17, 24, 39, 0.9)' },
+              ticks: { color: 'rgba(17, 24, 39, 0.7)' },
+              grid: { color: 'rgba(17, 24, 39, 0.08)' },
+            },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Dias sem atividade', color: 'rgba(17, 24, 39, 0.9)' },
               ticks: { color: 'rgba(17, 24, 39, 0.7)' },
               grid: { color: 'rgba(17, 24, 39, 0.08)' },
             },
